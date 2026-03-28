@@ -1,9 +1,9 @@
 # User Profile
 
-Name: [USER_NAME]
+Name: Volodymyr
 Role: Developer / Entrepreneur
-Telegram ID: [TELEGRAM_ID]
-Email: [USER_EMAIL]
+Telegram ID: 391671024
+Email: (see .env SMTP_USER)
 Timezone: Europe/Kyiv
 
 ## Preferences
