@@ -1,0 +1,91 @@
+version: "1.0"
+name: buddy-agent-sandbox-policy
+description: Security policy for Buddy Agent
+
+network:
+  default: deny
+  allow:
+    - api.openrouter.ai
+    - openrouter.ai
+    - api.telegram.org
+    - api.duckduckgo.com
+    - duckduckgo.com
+    - smtp.gmail.com
+    - api.resend.com
+    - github.com
+    - api.github.com
+    - api.vercel.com
+    - vercel.com
+    - api.railway.app
+    - railway.app
+    - registry.npmjs.org
+    - pypi.org
+    - files.pythonhosted.org
+    - sheets.googleapis.com
+    - oauth2.googleapis.com
+    - speech.platform.bing.com
+    - "*.tts.speech.microsoft.com"
+
+filesystem:
+  default: deny
+  allow:
+    read:
+      - "D:/BuddyWorkspace/**"
+      - "D:/Projects/**"
+      - "D:/Documents/**"
+      - "~/openclaw/**"
+    write:
+      - "D:/BuddyWorkspace/**"
+      - "D:/Projects/**"
+      - "~/openclaw/memory/**"
+      - "~/openclaw/data/**"
+      - "~/openclaw/skills/**"
+  deny:
+    always:
+      - "C:/Windows/**"
+      - "C:/Program Files/**"
+      - "C:/Program Files (x86)/**"
+      - "C:/Users/*/AppData/**"
+      - "C:/Users/*/NTUSER*"
+      - "C:/$Recycle.Bin/**"
+
+shell:
+  default: deny
+  allow:
+    - "git *"
+    - "npm *"
+    - "npx *"
+    - "node *"
+    - "python *"
+    - "python3 *"
+    - "pip *"
+    - "pip3 *"
+    - "vercel *"
+    - "railway *"
+    - "code *"
+    - "dir *"
+    - "ls *"
+    - "mkdir *"
+    - "cp *"
+    - "mv *"
+    - "echo *"
+    - "curl *"
+    - "which *"
+    - "where *"
+  deny:
+    - "rm -rf /"
+    - "rm -rf ~"
+    - "rm -rf ."
+    - "format *"
+    - "shutdown *"
+    - "del /s /q *"
+    - "net user *"
+    - "reg delete *"
+    - "powershell -enc*"
+    - "cmd /c rd /s /q *"
+
+limits:
+  max_execution_time: 300
+  max_file_size: 104857600
+  max_memory: 2147483648
+  max_cpu_percent: 80
