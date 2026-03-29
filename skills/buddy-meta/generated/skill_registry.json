@@ -1,0 +1,10 @@
+{
+  "version": 1,
+  "generated_skills": [],
+  "config": {
+    "max_skills": 20,
+    "max_priority": 40,
+    "heavy_model": "minimax/MiniMax-M1-80k",
+    "fallback_model": "deepseek/deepseek-chat-v3.2"
+  }
+}

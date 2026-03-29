@@ -40,14 +40,24 @@ desktop.ini
 *.swp
 *.swo
 
-# Whisper model cache
+# Whisper model cache & large binaries
 models/
+*.bin
+*.pt
 
 # Security sensitive
-*secret*
-*credential*
 *.pem
 *.key
 *.p12
 *.pfx
 pin_lockout.json
+
+# Business data (client info)
+skills/buddy-meta/generated/*/data/
+
+# Claude Code
+.claude/
+
+# Test/debug files
+*.txt
+!requirements.txt

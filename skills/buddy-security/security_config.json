@@ -1,6 +1,6 @@
 {
-  "owner_telegram_id": "CHANGE_ME",
-  "pin_hash": "CHANGE_ME_USE_BCRYPT",
+  "owner_telegram_id": "391671024",
+  "pin_hash": "$2b$12$DI03eaaW/qxgVTFdUlOTVeAN7lccf4ezWtZHI.3MFtId2dkZctfM2",
   "whitelist_paths": [
     "D:/BuddyWorkspace",
     "D:/Projects",
@@ -57,5 +57,29 @@
   "lockout_minutes": 15,
   "command_timeout_seconds": 300,
   "max_file_size_mb": 100,
-  "audit_log_path": "data/audit.jsonl"
+  "audit_log_path": "data/audit.jsonl",
+  "meta_skill_rules": {
+    "create_skill": "CRITICAL",
+    "uninstall_skill": "MEDIUM",
+    "reinstall_skill": "MEDIUM",
+    "list_skills": "SAFE",
+    "max_generated_skills": 20,
+    "max_script_lines": 200,
+    "max_generated_priority": 40,
+    "immutable_skills": ["buddy-security", "buddy-meta", "buddy-files"],
+    "heavy_model": "minimax/MiniMax-M1-80k",
+    "fallback_model": "deepseek/deepseek-chat-v3.2",
+    "forbidden_imports": [
+      "subprocess", "shutil", "ctypes", "cffi", "socket",
+      "multiprocessing", "threading", "signal", "pty", "termios",
+      "importlib", "code", "codeop", "compileall"
+    ],
+    "allowed_network_domains": [
+      "api.privatbank.ua",
+      "api.openweathermap.org",
+      "api.duckduckgo.com",
+      "api.github.com",
+      "wttr.in"
+    ]
+  }
 }

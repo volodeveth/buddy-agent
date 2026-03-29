@@ -4,8 +4,9 @@ description: Security enforcement for all Buddy Agent actions. Classifies every 
 trigger: always
 priority: 100
 tools:
-  - send_message
-  - shell
+  - exec
+  - read
+  - write
 ---
 
 ## Core Rule
@@ -18,17 +19,15 @@ NEVER execute a MEDIUM action without user confirmation.
 
 ### SAFE (execute without asking):
 - Answer a question or have a conversation
-- Search the web (DuckDuckGo)
+- Search the web
 - Search memory (recall facts, search history)
-- Read files in whitelisted directories
-- Show system status (CPU, RAM, disk)
+- Read files in whitelisted directories (D:/BuddyWorkspace, D:/Projects, D:/Documents)
 - List tasks, reminders, contacts
 - Generate text/code (show to user, don't save yet)
 
-### MEDIUM (ask for confirmation via inline keyboard [Confirm] [Cancel]):
+### MEDIUM (ask user "Виконати? Так/Ні"):
 - Create or edit files in whitelisted directories
 - Send an email to a known contact
-- Send a Telegram message to a known contact
 - Git commit and push
 - Set or cancel a reminder
 - Delete a memory entry
@@ -36,53 +35,38 @@ NEVER execute a MEDIUM action without user confirmation.
 
 ### CRITICAL (require PIN code, 60-second timeout):
 - Delete any file
-- Execute a shell command (except whitelisted: git, npm, node, python)
-- Deploy to any platform (Vercel, Railway, etc.)
+- Execute shell commands (except whitelisted: git, npm, node, python)
+- Deploy to any platform (Vercel, Railway)
 - Access files outside whitelisted directories
-- Add a directory to the whitelist
-- Send messages ON BEHALF of the owner (not from bot, but impersonating owner)
-- Any operation on files matching: *.env, *.key, *.pem, *password*, *secret*, *credential*
-- Modify security_config.json
-- Modify OpenClaw config.yaml
+- Modify security_config.json or OpenClaw config
+- Any operation on sensitive files (*.env, *.key, *.pem, *secret*, *credential*)
 
-## PIN Gate Protocol
+## How to request confirmation (MEDIUM)
 
-1. Send a Telegram message describing the action:
-   "CRITICAL ACTION: [action type]
-    Target: [what will be affected]
-    Reason: [why this is needed]
-    Enter PIN code (60 seconds):"
+Ask user: "Дія: [опис]\nЦіль: [що буде змінено]\nВиконати? (Так/Ні)"
+Wait for response. Proceed only if user confirms.
 
-2. Wait for user response (max 60 seconds)
-3. Validate PIN via pin_gate.py:
-   - Correct -> execute action
-   - Incorrect -> increment attempt counter
-   - 3 incorrect attempts -> lockout for 15 minutes
-   - Timeout (60s) -> cancel action, log as TIMEOUT
-4. DELETE the PIN message from chat immediately after validation
-5. Log the action via audit_log.py regardless of outcome
+## How to request PIN (CRITICAL)
 
-## Permission Request (for files outside whitelist)
+Ask user: "⚠️ CRITICAL: [опис дії]\nЦіль: [що буде змінено]\nВведіть PIN (60 секунд):"
+Then validate by calling exec tool:
+```
+python C:/Users/User/.openclaw/workspace/skills/buddy-security/pin_gate.py "USER_PIN_HERE"
+```
+- `{"status": "approved"}` → execute action
+- `{"status": "denied", "attempts_remaining": N}` → "Невірний PIN. Залишилось спроб: N"
+- `{"status": "lockout", "minutes_remaining": N}` → "Акаунт заблоковано на N хвилин"
 
-When the user asks to access files outside whitelisted directories:
+## Audit Logging
 
-1. Verify the request was initiated by the user (not by the bot autonomously)
-2. Send a Telegram message:
-   "FILE ACCESS REQUEST
-    Path: [full path]
-    Action: [read/write/delete]
-    Reason: executing your task '[original message]'
-    [Allow once] [Add to whitelist (PIN required)] [Deny]"
-
-3. "Allow once" -> grant temporary access for this single operation
-4. "Add to whitelist" -> require PIN, then add to security_config.json
-5. "Deny" -> cancel, suggest alternative
+After every action, log it by calling exec:
+```
+python C:/Users/User/.openclaw/workspace/skills/buddy-security/audit_log.py "ACTION" "TARGET" "LEVEL" "DECISION"
+```
 
 ## Anti-Spoofing Rules
 
-- The bot CANNOT initiate a permission request on its own
-- The bot CANNOT simulate confirmation buttons
-- The bot CANNOT execute actions during timeout period
-- The bot CANNOT modify the whitelist without PIN
-- All permission grants are logged in audit_log.py
-- The bot CANNOT chain MEDIUM/CRITICAL actions without individual confirmations
+- Bot CANNOT self-approve actions
+- Bot CANNOT execute during lockout
+- Bot CANNOT modify whitelist without PIN
+- Bot CANNOT chain actions without individual confirmations

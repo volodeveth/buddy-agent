@@ -1,3 +1,17 @@
 {
-  "contacts": []
+  "contacts": [
+    {
+      "name": "Ірина Дорош",
+      "nickname": [
+        "Ірина"
+      ],
+      "email": "doroshiryna0505@gmail.com",
+      "phone": "+380937015185",
+      "telegram": "1364155617",
+      "telegram_name": "Ірина",
+      "viber": "+380937015185",
+      "role": "дружина",
+      "notes": ""
+    }
+  ]
 }
