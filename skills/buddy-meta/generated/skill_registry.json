@@ -34,6 +34,73 @@
       "approval_pin_used": true,
       "sessions_used": 0,
       "last_used": null
+    },
+    {
+      "id": "gen_002",
+      "name": "buddy-find",
+      "description": "Маршрутизатор пошуку: шукає в пам'яті (memory/), файлах на диску або в інтернеті через DuckDuckGo",
+      "purpose": "Search router: receives query (sys.argv[1]) and search_type (sys.argv[2]: auto/memory/files/web). Memory search reads files from memory/ folder. File search lists files in D:/BuddyWorkspace, D:/Projects, D:/Documents. Web search uses DuckDuckGo API (api.duckduckgo.com). Auto mode picks best source based on keywords. Returns JSON results. Keep it simple - under 150 lines.",
+      "context": "пошук в памяті, файлах або інтернеті",
+      "priority": 35,
+      "created_at": "2026-03-29T21:20:40.452859",
+      "model_used": "minimax/minimax-m2.7",
+      "tokens_input": 842,
+      "tokens_output": 2071,
+      "files": [
+        "SKILL.md",
+        "find.py"
+      ],
+      "path": "skills\\buddy-meta\\generated\\buddy-find",
+      "status": "active",
+      "validation_result": {
+        "valid": true,
+        "errors": [],
+        "warnings": [],
+        "stats": {
+          "lines": 116,
+          "imports": 7,
+          "functions": 5
+        }
+      },
+      "attempts": 2,
+      "approval_pin_used": true,
+      "sessions_used": 0,
+      "last_used": null
+    },
+    {
+      "id": "gen_003",
+      "name": "buddy-dev-helper",
+      "description": "Розробницький помічник для аналізу проєктів: scaffold, deps, git-status",
+      "purpose": "Dev helper: sys.argv[1]=action, sys.argv[2]=path. Actions: 'scaffold' returns JSON with recommended project structure for Next.js/Python/Node template. 'deps' reads package.json or requirements.txt and returns dependencies list. 'git-status' checks if path is a git repo and returns basic info. Simple, under 100 lines.",
+      "context": "dev tools",
+      "priority": 35,
+      "created_at": "2026-03-29T21:28:47.092803",
+      "model_used": "minimax/minimax-m2.7",
+      "tokens_input": 2912,
+      "tokens_output": 6463,
+      "files": [
+        "SKILL.md",
+        "dev-helper.py"
+      ],
+      "path": "skills\\buddy-meta\\generated\\buddy-dev-helper",
+      "status": "active",
+      "validation_result": {
+        "valid": true,
+        "errors": [],
+        "warnings": [],
+        "stats": {
+          "lines": 172,
+          "imports": 4,
+          "functions": 4
+        }
+      },
+      "attempts": 1,
+      "approval_pin_used": true,
+      "sessions_used": 0,
+      "last_used": null,
+      "updated_at": "2026-03-29T21:33:57.777655",
+      "update_reason": "Fix scaffold action: when action is 'scaffold', sys.argv[2] should be project TYPE (nextjs/python/node), NOT a path. Only 'deps' and 'git-status' require a real path. Remove the path.exists() check for scaffold action. Also fix: scaffold should accept type as sys.argv[2] directly.",
+      "update_attempts": 1
     }
   ],
   "config": {

@@ -44,6 +44,17 @@ python <inline_exec_path> <args>
 
 Tell user: "Навик створено. Працює зараз через пряме виконання. Для повної інтеграції почніть нову сесію."
 
+### Reading and Updating Skills
+
+```bash
+# Read source code of a generated skill
+python create_skill.py --action read --name "buddy-skill-name"
+
+# Fix/update a generated skill (sends current code + fix description to MiniMax)
+python create_skill.py --action update --name "buddy-skill-name" \
+  --need "Description of what to fix or change"
+```
+
 ### Managing Generated Skills
 
 ```bash

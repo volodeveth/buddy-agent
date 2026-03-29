@@ -85,7 +85,7 @@ def _get_existing_skills() -> list[str]:
 
 
 def call_model(model: str, system_prompt: str, user_prompt: str,
-               max_tokens: int = 3000, temperature: float = 0.3) -> dict:
+               max_tokens: int = 25000, temperature: float = 0.3) -> dict:
     """Call a model via OpenRouter API. Returns parsed response."""
     api_key = os.environ.get("OPENROUTER_API_KEY", "")
     if not api_key:
@@ -118,7 +118,11 @@ def call_model(model: str, system_prompt: str, user_prompt: str,
         return {"error": f"Network error: {e.reason}"}
 
     content = result["choices"][0]["message"]["content"]
+    finish_reason = result["choices"][0].get("finish_reason", "unknown")
     usage = result.get("usage", {})
+
+    if finish_reason == "length":
+        return {"error": f"Model output truncated (hit max_tokens). finish_reason=length, tokens_output={usage.get('completion_tokens', 0)}"}
 
     return {
         "content": content,
@@ -183,6 +187,16 @@ def generate_skill(need: str, context: str = "",
             f"Fix the code and return corrected JSON.\n\n"
             f"Original need: {need}\n"
             f"Context: {context}"
+        )
+    elif context.startswith("UPDATE_EXISTING:"):
+        # Update mode: context contains the existing code
+        existing_code = context[len("UPDATE_EXISTING:"):]
+        user_prompt = (
+            f"UPDATE an existing skill. Here is the current code:\n"
+            f"```python\n{existing_code}\n```\n\n"
+            f"Required changes: {need}\n\n"
+            f"Return the COMPLETE updated skill as JSON (same format as creating new).\n"
+            f"Keep the same skill_name, update only what's needed."
         )
     else:
         user_prompt = (

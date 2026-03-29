@@ -189,6 +189,153 @@ def action_create(need: str, context: str = "") -> dict:
     }
 
 
+def action_read(name: str) -> dict:
+    """Read source code of a generated skill."""
+    registry = _load_registry()
+
+    entry = None
+    for s in registry["generated_skills"]:
+        if s["name"] == name:
+            entry = s
+            break
+
+    if not entry:
+        return {"status": "error", "message": f"Skill not found: {name}"}
+
+    skill_dir = GENERATED_DIR / name
+    if not skill_dir.exists():
+        return {"status": "error", "message": f"Skill directory not found: {name}"}
+
+    # Find the Python script
+    script_name = None
+    for f in entry.get("files", []):
+        if f.endswith(".py"):
+            script_name = f
+            break
+
+    if not script_name:
+        return {"status": "error", "message": f"No Python script in skill: {name}"}
+
+    script_path = skill_dir / script_name
+    if not script_path.exists():
+        return {"status": "error", "message": f"Script file not found: {script_path}"}
+
+    code = script_path.read_text(encoding="utf-8")
+
+    return {
+        "status": "success",
+        "name": name,
+        "script_name": script_name,
+        "code": code,
+        "lines": len(code.strip().split("\n")),
+        "description": entry.get("description", ""),
+    }
+
+
+def action_update(name: str, fix_description: str) -> dict:
+    """Update an existing generated skill. Sends current code + fix to MiniMax."""
+    registry = _load_registry()
+
+    # Find the skill
+    entry = None
+    entry_idx = None
+    for i, s in enumerate(registry["generated_skills"]):
+        if s["name"] == name and s["status"] == "active":
+            entry = s
+            entry_idx = i
+            break
+
+    if not entry:
+        return {"status": "error", "message": f"Active skill not found: {name}"}
+
+    if name in IMMUTABLE_SKILLS:
+        return {"status": "error", "message": f"Cannot update immutable skill: {name}"}
+
+    # Read current code
+    read_result = action_read(name)
+    if read_result["status"] != "success":
+        return read_result
+
+    current_code = read_result["code"]
+    script_name = read_result["script_name"]
+
+    # Import modules
+    sys.path.insert(0, str(SKILL_DIR))
+    from generate_with_model import generate_skill
+    from validate_code import validate
+
+    # Call MiniMax with existing code + fix description
+    max_attempts = 3
+    last_errors = None
+    skill_def = None
+
+    for attempt in range(1, max_attempts + 1):
+        context = f"UPDATE_EXISTING:{current_code}"
+        skill_def = generate_skill(fix_description, context, correction_errors=last_errors)
+
+        if "error" in skill_def:
+            return {"status": "error", "message": skill_def["error"], "attempt": attempt}
+
+        # Validate generated code
+        script_code = skill_def.get("script_code", "")
+        if not script_code:
+            last_errors = ["No script_code in response"]
+            continue
+
+        validation = validate(script_code)
+        if not validation["valid"]:
+            last_errors = validation["errors"]
+            continue
+
+        break
+    else:
+        return {
+            "status": "error",
+            "message": f"Update failed after {max_attempts} attempts",
+            "last_errors": last_errors,
+        }
+
+    # Save updated code
+    skill_dir = GENERATED_DIR / name
+    (skill_dir / script_name).write_text(script_code, encoding="utf-8")
+
+    # Update SKILL.md if description changed
+    new_desc = skill_def.get("description", entry.get("description", ""))
+    if new_desc != entry.get("description", ""):
+        skill_md_template = (TEMPLATES_DIR / "skill_template.md").read_text(encoding="utf-8")
+        skill_md = skill_md_template.replace("{{SKILL_NAME}}", name)
+        skill_md = skill_md.replace("{{DESCRIPTION}}", new_desc)
+        skill_md = skill_md.replace("{{INTENTS}}", skill_def.get("intents", ""))
+        skill_md = skill_md.replace("{{PRIORITY}}", str(entry.get("priority", 35)))
+        skill_md = skill_md.replace("{{INSTRUCTIONS}}", skill_def.get("instructions", ""))
+        (skill_dir / "SKILL.md").write_text(skill_md, encoding="utf-8")
+
+    # Update registry entry
+    entry["description"] = new_desc
+    entry["updated_at"] = datetime.now().isoformat()
+    entry["update_reason"] = fix_description
+    entry["model_used"] = skill_def.get("model_used", "unknown")
+    entry["tokens_input"] = entry.get("tokens_input", 0) + skill_def.get("tokens_input", 0)
+    entry["tokens_output"] = entry.get("tokens_output", 0) + skill_def.get("tokens_output", 0)
+    entry["validation_result"] = validation
+    entry["update_attempts"] = attempt
+    registry["generated_skills"][entry_idx] = entry
+    _save_registry(registry)
+
+    workspace_path = Path.home() / ".openclaw" / "workspace" / entry["path"] / script_name
+
+    return {
+        "status": "updated",
+        "skill_name": name,
+        "description": new_desc,
+        "fix_applied": fix_description,
+        "validation": validation,
+        "inline_exec": f"python {workspace_path}",
+        "model_used": skill_def.get("model_used", "unknown"),
+        "attempts": attempt,
+    }
+
+
 def action_list() -> dict:
     """List all generated skills."""
     registry = _load_registry()
@@ -210,10 +357,12 @@ def main():
     import argparse
 
     parser = argparse.ArgumentParser(description="Buddy Meta — Skill Creator")
-    parser.add_argument("--action", required=True, choices=["create", "list"],
+    parser.add_argument("--action", required=True,
+                        choices=["create", "list", "read", "update"],
                         help="Action to perform")
-    parser.add_argument("--need", default="", help="What the user needs (for create)")
+    parser.add_argument("--need", default="", help="What the user needs (for create/update)")
     parser.add_argument("--context", default="", help="Original user message (for create)")
+    parser.add_argument("--name", default="", help="Skill name (for read/update)")
 
     args = parser.parse_args()
 
@@ -225,6 +374,18 @@ def main():
 
     elif args.action == "list":
         result = action_list()
+
+    elif args.action == "read":
+        if not args.name:
+            print(json.dumps({"status": "error", "message": "--name is required for read"}))
+            sys.exit(1)
+        result = action_read(args.name)
+
+    elif args.action == "update":
+        if not args.name or not args.need:
+            print(json.dumps({"status": "error", "message": "--name and --need are required for update"}))
+            sys.exit(1)
+        result = action_update(args.name, args.need)
 
     print(json.dumps(result, ensure_ascii=False))
 
