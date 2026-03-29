@@ -9,7 +9,8 @@ import shutil
 from pathlib import Path
 from datetime import datetime
 
-sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding="utf-8")
+if hasattr(sys.stdout, "buffer") and not isinstance(sys.stdout, io.TextIOWrapper):
+    sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding="utf-8")
 
 SKILL_DIR = Path(__file__).parent.resolve()
 GENERATED_DIR = SKILL_DIR / "generated"

@@ -25,6 +25,10 @@ network:
     - oauth2.googleapis.com
     - speech.platform.bing.com
     - "*.tts.speech.microsoft.com"
+    # Generated skills (buddy-meta)
+    - api.privatbank.ua
+    - api.openweathermap.org
+    - wttr.in
 
 filesystem:
   default: deny
@@ -40,6 +44,7 @@ filesystem:
       - "~/openclaw/memory/**"
       - "~/openclaw/data/**"
       - "~/openclaw/skills/**"
+      - "~/openclaw/skills/buddy-meta/generated/**"
   deny:
     always:
       - "C:/Windows/**"

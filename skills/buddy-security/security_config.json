@@ -67,7 +67,7 @@
     "max_script_lines": 200,
     "max_generated_priority": 40,
     "immutable_skills": ["buddy-security", "buddy-meta", "buddy-files"],
-    "heavy_model": "minimax/MiniMax-M1-80k",
+    "heavy_model": "minimax/minimax-m2.7",
     "fallback_model": "deepseek/deepseek-chat-v3.2",
     "forbidden_imports": [
       "subprocess", "shutil", "ctypes", "cffi", "socket",

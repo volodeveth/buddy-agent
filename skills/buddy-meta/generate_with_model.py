@@ -11,7 +11,8 @@ from pathlib import Path
 from urllib.request import Request, urlopen
 from urllib.error import URLError, HTTPError
 
-sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding="utf-8")
+if hasattr(sys.stdout, "buffer") and not isinstance(sys.stdout, io.TextIOWrapper):
+    sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding="utf-8")
 
 SKILL_DIR = Path(__file__).parent.resolve()
 PROJECT_ROOT = SKILL_DIR.parent.parent
@@ -165,7 +166,7 @@ def generate_skill(need: str, context: str = "",
     _load_env()
     config = _load_meta_config()
 
-    model = config.get("heavy_model", "minimax/MiniMax-M1-80k")
+    model = config.get("heavy_model", "minimax/minimax-m2.7")
     fallback = config.get("fallback_model", "deepseek/deepseek-chat-v3.2")
     allowed_domains = config.get("allowed_network_domains", [
         "api.privatbank.ua", "api.openweathermap.org",
