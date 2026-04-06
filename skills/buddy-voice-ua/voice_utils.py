@@ -48,8 +48,6 @@ def convert(input_path: str, output_format: str = "wav") -> str:
 def get_duration(input_path: str) -> float:
     """Get audio duration in seconds."""
     container = av.open(input_path)
-    duration = container.duration / av.time_base if container.duration else 0.0
-    # av.time_base is microseconds, duration is in time_base units
     duration_sec = container.duration / 1_000_000 if container.duration else 0.0
     container.close()
     return round(duration_sec, 1)
