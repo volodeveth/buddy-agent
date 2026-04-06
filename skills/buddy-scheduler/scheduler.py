@@ -25,7 +25,7 @@ def load_reminders() -> list:
 
 def save_reminders(reminders: list):
     with open(REMINDERS_PATH, "w", encoding="utf-8") as f:
-        json.dump({"reminders": reminders}, f, ensure_ascii=False, indent=2)
+        json.dump({"reminders": reminders}, f, ensure_ascii=True, indent=2)
 
 
 def add_reminder(text: str, trigger_at: str, recurring: str = None) -> dict:
@@ -116,8 +116,12 @@ def _calc_next_occurrence(from_time: datetime, recurring: str) -> datetime:
     elif recurring.startswith("weekly"):
         return from_time + timedelta(weeks=1)
     elif recurring == "monthly":
-        # Simple: add 30 days
-        return from_time + timedelta(days=30)
+        import calendar
+        year = from_time.year + (from_time.month // 12)
+        month = (from_time.month % 12) + 1
+        max_day = calendar.monthrange(year, month)[1]
+        day = min(from_time.day, max_day)
+        return from_time.replace(year=year, month=month, day=day)
     else:
         # Default: daily
         return from_time + timedelta(days=1)
@@ -163,7 +167,7 @@ def main():
     else:
         result = {"error": f"Unknown command: {cmd}"}
 
-    print(json.dumps(result, ensure_ascii=False))
+    print(json.dumps(result, ensure_ascii=True))
 
 
 if __name__ == "__main__":
