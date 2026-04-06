@@ -23,7 +23,7 @@ TEMPLATES_DIR = SKILL_DIR / "templates"
 IMMUTABLE_SKILLS = {"buddy-security", "buddy-meta", "buddy-files"}
 MAX_GENERATED_PRIORITY = 40
 MAX_GENERATED_SKILLS = 20
-MAX_SCRIPT_LINES = 200
+MAX_SCRIPT_LINES = 800
 
 
 def _load_registry() -> dict:
@@ -36,7 +36,7 @@ def _load_registry() -> dict:
 def _save_registry(registry: dict) -> None:
     GENERATED_DIR.mkdir(parents=True, exist_ok=True)
     with open(REGISTRY_PATH, "w", encoding="utf-8") as f:
-        json.dump(registry, f, ensure_ascii=False, indent=2)
+        json.dump(registry, f, ensure_ascii=True, indent=2)
 
 
 def _next_id(registry: dict) -> str:
@@ -65,6 +65,45 @@ def _validate_skill_name(name: str) -> str | None:
     if not name.replace("-", "").replace("_", "").isalnum():
         return f"Skill name must be alphanumeric with dashes: {name}"
     return None
+
+
+def _try_fix_syntax(code: str) -> str:
+    """Attempt to auto-fix common syntax errors in generated code.
+    Only fixes safe patterns. Returns fixed code or original if no fix found."""
+    import ast as _ast
+    try:
+        _ast.parse(code)
+        return code  # Already valid
+    except SyntaxError as e:
+        err_lineno = e.lineno
+        err_msg = str(e.msg)
+
+    lines = code.splitlines()
+    if not err_lineno or err_lineno > len(lines):
+        return code
+
+    bad_line = lines[err_lineno - 1]
+    stripped = bad_line.strip()
+
+    # Fix: only replace with pass if line is inside an indented block,
+    # is NOT a return/yield/assignment, and is NOT a control structure
+    unsafe_prefixes = ("return ", "yield ", "raise ", "if ", "elif ", "else:", "for ", "while ", "try:", "except", "finally:", "with ", "class ", "def ")
+    is_assignment = "=" in stripped and not stripped.startswith("=") and "==" not in stripped.split("=")[0]
+
+    if (bad_line[0:1] == " "
+            and stripped
+            and not any(stripped.startswith(p) for p in unsafe_prefixes)
+            and not is_assignment):
+        indent = len(bad_line) - len(bad_line.lstrip())
+        lines[err_lineno - 1] = " " * indent + "pass  # auto-fixed: syntax error in original line"
+        fixed = "\n".join(lines)
+        try:
+            _ast.parse(fixed)
+            return fixed
+        except SyntaxError:
+            pass
+
+    return code
 
 
 def action_create(need: str, context: str = "") -> dict:
@@ -104,11 +143,14 @@ def action_create(need: str, context: str = "") -> dict:
         if priority > MAX_GENERATED_PRIORITY:
             skill_def["priority"] = MAX_GENERATED_PRIORITY
 
-        # Validate generated code
+        # Validate generated code (with auto-fix attempt)
         script_code = skill_def.get("script_code", "")
         if not script_code:
             last_errors = ["No script_code in response"]
             continue
+
+        script_code = _try_fix_syntax(script_code)
+        skill_def["script_code"] = script_code
 
         validation = validate(script_code)
         if not validation["valid"]:
@@ -295,8 +337,14 @@ def action_update(name: str, fix_description: str) -> dict:
             "last_errors": last_errors,
         }
 
-    # Save updated code
+    # Backup old version before overwriting
     skill_dir = GENERATED_DIR / name
+    old_script = skill_dir / script_name
+    if old_script.exists():
+        backup_name = script_name.replace(".py", "_backup.py")
+        (skill_dir / backup_name).write_text(old_script.read_text(encoding="utf-8"), encoding="utf-8")
+
+    # Save updated code
     (skill_dir / script_name).write_text(script_code, encoding="utf-8")
 
     # Update SKILL.md if description changed
@@ -324,6 +372,8 @@ def action_update(name: str, fix_description: str) -> dict:
 
     workspace_path = Path.home() / ".openclaw" / "workspace" / entry["path"] / script_name
 
+    backup_name = script_name.replace(".py", "_backup.py")
+
     return {
         "status": "updated",
         "skill_name": name,
@@ -331,8 +381,54 @@ def action_update(name: str, fix_description: str) -> dict:
         "fix_applied": fix_description,
         "validation": validation,
         "inline_exec": f"python {workspace_path}",
+        "backup": f"{skill_dir / backup_name}",
         "model_used": skill_def.get("model_used", "unknown"),
         "attempts": attempt,
+    }
+
+
+def action_rollback(name: str) -> dict:
+    """Rollback a skill to its previous version (from _backup.py)."""
+    registry = _load_registry()
+
+    entry = None
+    for s in registry["generated_skills"]:
+        if s["name"] == name and s["status"] == "active":
+            entry = s
+            break
+
+    if not entry:
+        return {"status": "error", "message": f"Active skill not found: {name}"}
+
+    # Find script name
+    script_name = None
+    for f in entry.get("files", []):
+        if f.endswith(".py"):
+            script_name = f
+            break
+
+    if not script_name:
+        return {"status": "error", "message": f"No Python script in skill: {name}"}
+
+    skill_dir = GENERATED_DIR / name
+    backup_name = script_name.replace(".py", "_backup.py")
+    backup_path = skill_dir / backup_name
+    script_path = skill_dir / script_name
+
+    if not backup_path.exists():
+        return {"status": "error", "message": f"No backup found for {name}"}
+
+    # Restore backup
+    script_path.write_text(backup_path.read_text(encoding="utf-8"), encoding="utf-8")
+    backup_path.unlink()
+
+    workspace_path = Path.home() / ".openclaw" / "workspace" / entry["path"] / script_name
+
+    return {
+        "status": "rolled_back",
+        "skill_name": name,
+        "inline_exec": f"python {workspace_path}",
+        "message": f"Restored previous version of {name}",
     }
 
 
@@ -353,41 +449,157 @@ def action_list() -> dict:
     return {"status": "success", "count": len(skills), "skills": skills}
 
 
+def _parse_args() -> dict:
+    """Parse CLI args. Supports THREE input methods:
+    1. request.json file (preferred — no encoding issues):
+       Write request.json in same dir, run script with no args
+    2. Flag-style: --action create --need "fetch HTML" --context "msg"
+    3. Positional: create fetch HTML from URL
+    """
+    raw = sys.argv[1:]
+    result = {"action": "", "need": "", "context": "", "name": ""}
+
+    # Priority 1: ALWAYS check for request.json first (bot writes it via file_write tool)
+    # This takes priority even if CLI args are present, because Gemini often
+    # adds unexpected arguments to the exec command.
+    request_file = SKILL_DIR / "request.json"
+    if request_file.exists():
+        try:
+            raw_text = request_file.read_text(encoding="utf-8")
+            try:
+                req = json.loads(raw_text)
+            except json.JSONDecodeError:
+                # Bot (Gemini) often writes invalid escapes like \' in JSON.
+                # Fix by stripping invalid backslash sequences.
+                fixed = []
+                idx = 0
+                valid_esc = set('"\\bfnrtu/')
+                while idx < len(raw_text):
+                    ch = raw_text[idx]
+                    if ch == "\\" and idx + 1 < len(raw_text):
+                        nxt = raw_text[idx + 1]
+                        if nxt in valid_esc:
+                            fixed.append(ch)
+                            fixed.append(nxt)
+                            idx += 2
+                        else:
+                            idx += 1  # skip invalid backslash
+                    else:
+                        fixed.append(ch)
+                        idx += 1
+                req = json.loads("".join(fixed))
+            result["action"] = req.get("action", "")
+            result["need"] = req.get("need", "")
+            result["context"] = req.get("context", "")
+            result["name"] = req.get("name", "")
+            # Delete after reading to avoid stale data
+            request_file.unlink()
+            return result
+        except (json.JSONDecodeError, OSError):
+            pass  # Fall through to CLI parsing
+
+    if not raw:
+        return result
+
+    # Check if using --flag style
+    if any(a.startswith("--") for a in raw):
+        # Flag-style: extract --action, --need, --context, --name
+        i = 0
+        while i < len(raw):
+            arg = raw[i]
+            if arg in ("--action",) and i + 1 < len(raw):
+                result["action"] = raw[i + 1]
+                i += 2
+            elif arg in ("--need",) and i + 1 < len(raw):
+                # Collect everything until next --flag or end
+                parts = []
+                i += 1
+                while i < len(raw) and not raw[i].startswith("--"):
+                    parts.append(raw[i])
+                    i += 1
+                result["need"] = " ".join(parts)
+            elif arg in ("--context",) and i + 1 < len(raw):
+                parts = []
+                i += 1
+                while i < len(raw) and not raw[i].startswith("--"):
+                    parts.append(raw[i])
+                    i += 1
+                result["context"] = " ".join(parts)
+            elif arg in ("--name",) and i + 1 < len(raw):
+                result["name"] = raw[i + 1]
+                i += 2
+            else:
+                i += 1
+    else:
+        # Positional style: first arg is action, rest is need/name
+        result["action"] = raw[0]
+        rest = " ".join(raw[1:])
+        if result["action"] in ("create",):
+            result["need"] = rest
+        elif result["action"] in ("read",):
+            result["name"] = rest
+        elif result["action"] in ("update",):
+            parts = rest.split(" ", 1)
+            result["name"] = parts[0] if parts else ""
+            result["need"] = parts[1] if len(parts) > 1 else ""
+
+    return result
+
+
 def main():
-    import argparse
+    parsed = _parse_args()
+    action = parsed["action"]
+    need = parsed["need"]
+    context = parsed["context"]
+    name = parsed["name"]
 
-    parser = argparse.ArgumentParser(description="Buddy Meta — Skill Creator")
-    parser.add_argument("--action", required=True,
-                        choices=["create", "list", "read", "update"],
-                        help="Action to perform")
-    parser.add_argument("--need", default="", help="What the user needs (for create/update)")
-    parser.add_argument("--context", default="", help="Original user message (for create)")
-    parser.add_argument("--name", default="", help="Skill name (for read/update)")
+    if not action:
+        _write_result({"status": "error", "message": "No action specified"})
+        return
 
-    args = parser.parse_args()
+    # Suppress any stray stdout during execution
+    real_stdout = sys.stdout
+    sys.stdout = io.StringIO()
 
-    if args.action == "create":
-        if not args.need:
-            print(json.dumps({"status": "error", "message": "--need is required for create"}))
-            sys.exit(1)
-        result = action_create(args.need, args.context)
+    try:
+        if action == "create":
+            if not need:
+                result = {"status": "error", "message": "need is required for create"}
+            else:
+                result = action_create(need, context)
+        elif action == "list":
+            result = action_list()
+        elif action == "read":
+            if not name:
+                result = {"status": "error", "message": "name is required for read"}
+            else:
+                result = action_read(name)
+        elif action == "update":
+            if not name or not need:
+                result = {"status": "error", "message": "name and need are required for update"}
+            else:
+                result = action_update(name, need)
+        elif action == "rollback":
+            if not name:
+                result = {"status": "error", "message": "name is required for rollback"}
+            else:
+                result = action_rollback(name)
+        else:
+            result = {"status": "error", "message": f"Unknown action: {action}"}
+    except Exception as e:
+        result = {"status": "error", "message": str(e)}
+    finally:
+        sys.stdout = real_stdout
 
-    elif args.action == "list":
-        result = action_list()
+    _write_result(result)
 
-    elif args.action == "read":
-        if not args.name:
-            print(json.dumps({"status": "error", "message": "--name is required for read"}))
-            sys.exit(1)
-        result = action_read(args.name)
 
-    elif args.action == "update":
-        if not args.name or not args.need:
-            print(json.dumps({"status": "error", "message": "--name and --need are required for update"}))
-            sys.exit(1)
-        result = action_update(args.name, args.need)
-
-    print(json.dumps(result, ensure_ascii=False))
+def _write_result(result: dict) -> None:
+    """Write result to file and print marker to stdout."""
+    output = json.dumps(result, ensure_ascii=True)
+    result_file = SKILL_DIR / "last_result.json"
+    result_file.write_text(output, encoding="utf-8")
+    print("DONE")
 
 
 if __name__ == "__main__":
