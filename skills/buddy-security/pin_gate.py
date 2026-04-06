@@ -31,7 +31,7 @@ def check_lockout():
         data = json.load(f)
     lockout_until = datetime.fromisoformat(data.get("lockout_until", "2000-01-01"))
     if datetime.now() < lockout_until:
-        remaining = (lockout_until - datetime.now()).seconds // 60
+        remaining = int((lockout_until - datetime.now()).total_seconds()) // 60
         print(json.dumps({"status": "lockout", "minutes_remaining": remaining}))
         return True
     LOCKOUT_PATH.unlink(missing_ok=True)
@@ -50,25 +50,35 @@ def verify_pin(pin_input: str) -> bool:
     return bcrypt.checkpw(pin_input.encode("utf-8"), pin_hash.encode("utf-8"))
 
 
-def record_failure():
-    """Record a failed PIN attempt; lockout after max_attempts."""
+def record_failure() -> dict:
+    """Record a failed PIN attempt; lockout after max_attempts.
+    Uses file locking to prevent race conditions."""
+    import msvcrt
+
     config = load_config()
-    lockout_data = {"attempts": 0, "lockout_until": None}
-    if LOCKOUT_PATH.exists():
-        with open(LOCKOUT_PATH, encoding="utf-8") as f:
-            lockout_data = json.load(f)
-
-    lockout_data["attempts"] = lockout_data.get("attempts", 0) + 1
-
-    if lockout_data["attempts"] >= config.get("max_pin_attempts", 3):
-        lockout_minutes = config.get("lockout_minutes", 15)
-        lockout_until = datetime.now() + timedelta(minutes=lockout_minutes)
-        lockout_data["lockout_until"] = lockout_until.isoformat()
-        lockout_data["attempts"] = 0
-
     LOCKOUT_PATH.parent.mkdir(parents=True, exist_ok=True)
-    with open(LOCKOUT_PATH, "w", encoding="utf-8") as f:
-        json.dump(lockout_data, f)
+
+    with open(LOCKOUT_PATH, "a+", encoding="utf-8") as f:
+        msvcrt.locking(f.fileno(), msvcrt.LK_LOCK, 1)
+        try:
+            f.seek(0)
+            raw = f.read()
+            lockout_data = json.loads(raw) if raw.strip() else {"attempts": 0, "lockout_until": None}
+
+            lockout_data["attempts"] = lockout_data.get("attempts", 0) + 1
+
+            if lockout_data["attempts"] >= config.get("max_pin_attempts", 3):
+                lockout_minutes = config.get("lockout_minutes", 15)
+                lockout_until = datetime.now() + timedelta(minutes=lockout_minutes)
+                lockout_data["lockout_until"] = lockout_until.isoformat()
+                lockout_data["attempts"] = 0
+
+            f.seek(0)
+            f.truncate()
+            json.dump(lockout_data, f)
+        finally:
+            f.seek(0)
+            msvcrt.locking(f.fileno(), msvcrt.LK_UNLCK, 1)
 
     return lockout_data
 
