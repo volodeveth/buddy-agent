@@ -15,7 +15,7 @@ sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding="utf-8")
 REMINDERS_PATH = Path(__file__).parent / "reminders.json"
 
 
-def load_reminders() -> list:
+def load_reminders() -> list[dict]:
     if not REMINDERS_PATH.exists():
         return []
     with open(REMINDERS_PATH, encoding="utf-8") as f:
@@ -23,12 +23,12 @@ def load_reminders() -> list:
     return data.get("reminders", [])
 
 
-def save_reminders(reminders: list):
+def save_reminders(reminders: list[dict]) -> None:
     with open(REMINDERS_PATH, "w", encoding="utf-8") as f:
         json.dump({"reminders": reminders}, f, ensure_ascii=True, indent=2)
 
 
-def add_reminder(text: str, trigger_at: str, recurring: str = None) -> dict:
+def add_reminder(text: str, trigger_at: str, recurring: str | None = None) -> dict:
     """Add a new reminder.
 
     Args:
@@ -127,7 +127,7 @@ def _calc_next_occurrence(from_time: datetime, recurring: str) -> datetime:
         return from_time + timedelta(days=1)
 
 
-def main():
+def main() -> None:
     if len(sys.argv) < 2:
         print(json.dumps({
             "error": "Usage: scheduler.py <command> [args]",

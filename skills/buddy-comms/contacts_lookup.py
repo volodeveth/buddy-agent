@@ -11,7 +11,7 @@ sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding="utf-8")
 CONTACTS_PATH = Path(__file__).parent / "contacts.json"
 
 
-def load_contacts() -> list:
+def load_contacts() -> list[dict]:
     if not CONTACTS_PATH.exists():
         return []
     with open(CONTACTS_PATH, encoding="utf-8") as f:
@@ -19,9 +19,9 @@ def load_contacts() -> list:
     return data.get("contacts", [])
 
 
-def save_contacts(contacts: list):
+def save_contacts(contacts: list[dict]) -> None:
     with open(CONTACTS_PATH, "w", encoding="utf-8") as f:
-        json.dump({"contacts": contacts}, f, ensure_ascii=False, indent=2)
+        json.dump({"contacts": contacts}, f, ensure_ascii=True, indent=2)
 
 
 def _normalize_ukrainian(text: str) -> str:
@@ -49,7 +49,7 @@ def _normalize_ukrainian(text: str) -> str:
     return text
 
 
-def search(query: str) -> list:
+def search(query: str) -> list[dict]:
     """Search contacts by name or nickname (case-insensitive, Ukrainian-aware fuzzy match)."""
     contacts = load_contacts()
     query_lower = query.lower().strip()
@@ -100,7 +100,7 @@ def add_contact(name: str, email: str = "", role: str = "",
     return {"status": "added", "contact": new_contact}
 
 
-def main():
+def main() -> None:
     if len(sys.argv) < 2:
         print(json.dumps({"error": "Usage: contacts_lookup.py <name> | --add <name> <email> [role]"}))
         sys.exit(1)
@@ -113,14 +113,14 @@ def main():
         email = sys.argv[3]
         role = sys.argv[4] if len(sys.argv) > 4 else ""
         result = add_contact(name, email, role)
-        print(json.dumps(result, ensure_ascii=False))
+        print(json.dumps(result, ensure_ascii=True))
     else:
         query = sys.argv[1]
         results = search(query)
         if results:
-            print(json.dumps({"status": "found", "count": len(results), "contacts": results}, ensure_ascii=False))
+            print(json.dumps({"status": "found", "count": len(results), "contacts": results}, ensure_ascii=True))
         else:
-            print(json.dumps({"status": "not_found", "query": query}, ensure_ascii=False))
+            print(json.dumps({"status": "not_found", "query": query}, ensure_ascii=True))
 
 
 if __name__ == "__main__":

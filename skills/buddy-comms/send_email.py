@@ -87,7 +87,7 @@ def send_via_smtp(to: str, subject: str, body: str,
         return {"status": "error", "message": str(e)}
 
 
-def main():
+def main() -> None:
     if len(sys.argv) < 4:
         print(json.dumps({"error": "Usage: send_email.py <to> <subject> <body> [from_name] [cc] [bcc] [attachment]"}))
         sys.exit(1)
@@ -101,7 +101,7 @@ def main():
     attachment = sys.argv[7] if len(sys.argv) > 7 else ""
 
     result = send_via_smtp(to, subject, body, from_name, cc, bcc, attachment)
-    print(json.dumps(result, ensure_ascii=False))
+    print(json.dumps(result, ensure_ascii=True))
 
 
 if __name__ == "__main__":

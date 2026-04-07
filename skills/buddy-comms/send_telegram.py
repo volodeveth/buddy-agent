@@ -88,7 +88,7 @@ def send_telegram(chat_id: str, text: str) -> dict:
         return {"status": "error", "message": str(e)}
 
 
-def main():
+def main() -> None:
     if len(sys.argv) < 3:
         print(json.dumps({"error": "Usage: send_telegram.py <chat_id> <message_text>"}))
         sys.exit(1)
@@ -97,7 +97,7 @@ def main():
     text = sys.argv[2]
 
     result = send_telegram(chat_id, text)
-    print(json.dumps(result, ensure_ascii=False))
+    print(json.dumps(result, ensure_ascii=True))
 
 
 if __name__ == "__main__":
