@@ -17,7 +17,7 @@ AUDIT_PATH = PROJECT_ROOT / "data" / "audit.jsonl"
 
 def log_action(action: str, target: str, level: str, decision: str,
                pin_used: bool = False, initiated_by: str = "user_message",
-               original_message: str = "", execution_result: str = "pending"):
+               original_message: str = "", execution_result: str = "pending") -> dict:
     entry = {
         "timestamp": datetime.now().isoformat(),
         "action": action,
@@ -31,11 +31,11 @@ def log_action(action: str, target: str, level: str, decision: str,
     }
     AUDIT_PATH.parent.mkdir(parents=True, exist_ok=True)
     with open(AUDIT_PATH, "a", encoding="utf-8") as f:
-        f.write(json.dumps(entry, ensure_ascii=False) + "\n")
+        f.write(json.dumps(entry, ensure_ascii=True) + "\n")
     return entry
 
 
-def main():
+def main() -> None:
     if len(sys.argv) < 5:
         print(json.dumps({"error": "Usage: audit_log.py <action> <target> <level> <decision> [pin_used] [original_message] [result]"}))
         sys.exit(1)
@@ -49,7 +49,7 @@ def main():
     result = sys.argv[7] if len(sys.argv) > 7 else "pending"
 
     entry = log_action(action, target, level, decision, pin_used, "user_message", original_message, result)
-    print(json.dumps(entry, ensure_ascii=False))
+    print(json.dumps(entry, ensure_ascii=True))
 
 
 if __name__ == "__main__":

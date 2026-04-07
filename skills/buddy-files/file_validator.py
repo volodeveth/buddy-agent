@@ -21,7 +21,7 @@ BLOCKED_DIRS = [
 ]
 
 
-def load_config():
+def load_config() -> dict:
     with open(CONFIG_PATH, encoding="utf-8") as f:
         return json.load(f)
 
@@ -31,7 +31,7 @@ def normalize_path(path_str: str) -> str:
     return str(Path(path_str).resolve()).replace("\\", "/")
 
 
-def is_in_whitelist(path: str, whitelist: list) -> bool:
+def is_in_whitelist(path: str, whitelist: list[str]) -> bool:
     """Check if path is within any whitelisted directory."""
     norm_path = normalize_path(path).lower()
     for allowed in whitelist:
@@ -50,7 +50,7 @@ def is_blocked(path: str) -> bool:
     return False
 
 
-def is_sensitive(path: str, patterns: list) -> bool:
+def is_sensitive(path: str, patterns: list[str]) -> bool:
     """Check if file matches sensitive patterns."""
     filename = Path(path).name
     for pattern in patterns:
@@ -103,7 +103,7 @@ def validate(path: str, action: str = "read") -> dict:
     }
 
 
-def main():
+def main() -> None:
     if len(sys.argv) < 2:
         print(json.dumps({"error": "Usage: file_validator.py <path> [action: read|write|delete]"}))
         sys.exit(1)
@@ -115,7 +115,7 @@ def main():
         result = validate(path, action)
         result["path"] = path
         result["action"] = action
-        print(json.dumps(result, ensure_ascii=False))
+        print(json.dumps(result, ensure_ascii=True))
     except Exception as e:
         print(json.dumps({"error": str(e)}))
         sys.exit(1)

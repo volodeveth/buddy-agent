@@ -18,12 +18,12 @@ CONFIG_PATH = SKILL_DIR / "security_config.json"
 LOCKOUT_PATH = PROJECT_ROOT / "data" / "pin_lockout.json"
 
 
-def load_config():
+def load_config() -> dict:
     with open(CONFIG_PATH, encoding="utf-8") as f:
         return json.load(f)
 
 
-def check_lockout():
+def check_lockout() -> bool:
     """Return True if currently locked out."""
     if not LOCKOUT_PATH.exists():
         return False
@@ -83,7 +83,7 @@ def record_failure() -> dict:
     return lockout_data
 
 
-def main():
+def main() -> None:
     if len(sys.argv) < 2:
         print(json.dumps({"status": "error", "message": "Usage: pin_gate.py <pin_code>"}))
         sys.exit(1)
