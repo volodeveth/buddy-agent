@@ -8,7 +8,8 @@ import uuid
 from pathlib import Path
 from datetime import datetime, timedelta, timezone
 
-sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding="utf-8")
+if hasattr(sys.stdout, "buffer") and not isinstance(sys.stdout, io.TextIOWrapper):
+    sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding="utf-8")
 
 # Kyiv timezone: UTC+2 (winter) / UTC+3 (summer)
 # Simple approach: use system local time
