@@ -18,3 +18,9 @@ tools:
 ### Combined: when unsure, check memory -> files -> web
 
 All searches are SAFE level.
+
+## Script
+
+`search.py <query> [source: auto|memory|files|web]`
+
+Returns JSON: `{"query": "...", "source": "memory|files|web|combined", "count": N, "results": [...]}`
