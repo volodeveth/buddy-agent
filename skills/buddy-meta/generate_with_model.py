@@ -7,9 +7,12 @@ import sys
 import io
 import json
 import os
+import warnings
 from pathlib import Path
 from urllib.request import Request, urlopen
 from urllib.error import URLError, HTTPError
+
+warnings.filterwarnings("ignore")
 
 if hasattr(sys.stdout, "buffer") and not isinstance(sys.stdout, io.TextIOWrapper):
     sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding="utf-8")
@@ -132,28 +135,93 @@ def call_model(model: str, system_prompt: str, user_prompt: str,
     }
 
 
+SKILL_JSON_KEYS = [
+    "skill_name", "description", "intents", "priority",
+    "script_name", "script_code", "instructions",
+]
+
+
+def _extract_fields_fallback(content: str) -> dict:
+    """Extract skill fields by finding key boundaries when JSON is broken.
+    MiniMax often returns JSON with unescaped quotes inside script_code."""
+    result = {}
+    key_positions = []
+    for key in SKILL_JSON_KEYS:
+        pos = content.find(f'"{key}"')
+        if pos >= 0:
+            key_positions.append((pos, key))
+    key_positions.sort()
+
+    for i, (pos, key) in enumerate(key_positions):
+        colon = content.index(":", pos + len(key) + 2)
+        val_start = colon + 1
+        while val_start < len(content) and content[val_start] in " \t\n\r":
+            val_start += 1
+
+        if i + 1 < len(key_positions):
+            val_end = key_positions[i + 1][0]
+            while val_end > val_start and content[val_end - 1] in " \t\n\r,":
+                val_end -= 1
+        else:
+            val_end = content.rfind("}")
+            while val_end > val_start and content[val_end - 1] in " \t\n\r,":
+                val_end -= 1
+
+        raw_value = content[val_start:val_end]
+        try:
+            result[key] = json.loads(raw_value)
+            continue
+        except (json.JSONDecodeError, ValueError):
+            pass
+
+        if raw_value.startswith('"'):
+            inner = raw_value[1:]
+            if inner.endswith('"'):
+                inner = inner[:-1]
+            inner = inner.replace("\\n", "\n").replace("\\t", "\t")
+            inner = inner.replace('\\"', '"').replace("\\\\", "\\")
+            result[key] = inner
+        else:
+            try:
+                result[key] = int(raw_value)
+            except ValueError:
+                result[key] = raw_value
+
+    if not result.get("skill_name"):
+        return {"error": f"Could not extract skill fields from response: {content[:200]}"}
+    return result
+
+
 def parse_skill_response(content: str) -> dict:
     """Parse MiniMax response into skill definition. Handles JSON in markdown blocks."""
-    # Try direct JSON parse
+    debug_file = SKILL_DIR / "last_raw_response.txt"
+    debug_file.write_text(content, encoding="utf-8")
+
     content = content.strip()
     if content.startswith("```"):
-        # Strip markdown code block
         lines = content.split("\n")
         lines = [l for l in lines if not l.strip().startswith("```")]
         content = "\n".join(lines).strip()
 
+    # Try direct JSON parse
     try:
         return json.loads(content)
     except json.JSONDecodeError:
-        # Try to find JSON object in the text
-        start = content.find("{")
-        end = content.rfind("}") + 1
-        if start >= 0 and end > start:
-            try:
-                return json.loads(content[start:end])
-            except json.JSONDecodeError:
-                pass
-        return {"error": f"Could not parse model response as JSON: {content[:200]}"}
+        pass
+
+    # Try extracting JSON object from text
+    start = content.find("{")
+    end = content.rfind("}") + 1
+    if start >= 0 and end > start:
+        raw = content[start:end]
+        try:
+            return json.loads(raw)
+        except json.JSONDecodeError:
+            pass
+        # Fallback: extract fields by key boundaries
+        return _extract_fields_fallback(raw)
+
+    return {"error": f"No JSON object found in response: {content[:200]}"}
 
 
 def generate_skill(need: str, context: str = "",
@@ -181,10 +249,22 @@ def generate_skill(need: str, context: str = "",
     system_prompt = _load_system_prompt(need, context, allowed_domains, existing_skills)
 
     if correction_errors:
+        # Build specific fix instructions based on error types
+        fix_hints = []
+        for err in correction_errors:
+            if "lines" in err and "max allowed" in err:
+                fix_hints.append(
+                    "CODE TOO LONG. You MUST shorten it: remove help/usage text, "
+                    "inline simple methods, remove verbose docstrings, compress "
+                    "action routing with a dispatch dict. Target under 700 lines."
+                )
+                break
+        hint_text = "\n".join(fix_hints) if fix_hints else "Fix the code and return corrected JSON."
+
         user_prompt = (
             f"PREVIOUS ATTEMPT FAILED VALIDATION.\n"
             f"Errors: {json.dumps(correction_errors)}\n\n"
-            f"Fix the code and return corrected JSON.\n\n"
+            f"{hint_text}\n\n"
             f"Original need: {need}\n"
             f"Context: {context}"
         )
@@ -227,7 +307,7 @@ def generate_skill(need: str, context: str = "",
     return skill_def
 
 
-def main():
+def main() -> None:
     import argparse
 
     parser = argparse.ArgumentParser(description="Generate skill via heavy model")
@@ -245,7 +325,7 @@ def main():
             correction_errors = [args.errors]
 
     result = generate_skill(args.need, args.context, correction_errors)
-    print(json.dumps(result, ensure_ascii=False))
+    print(json.dumps(result, ensure_ascii=True))
 
 
 if __name__ == "__main__":

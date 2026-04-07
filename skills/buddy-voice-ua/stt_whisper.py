@@ -31,7 +31,7 @@ _model = None
 SKILL_DIR = Path(__file__).parent.resolve()
 
 
-def get_model():
+def get_model() -> WhisperModel:
     global _model
     if _model is None:
         _model = WhisperModel(MODEL_SIZE, device="cpu", compute_type="int8")
@@ -112,7 +112,7 @@ def transcribe(audio_path: str) -> dict:
     }
 
 
-def main():
+def main() -> None:
     if len(sys.argv) < 2:
         print(json.dumps({"error": "No audio file path provided"}))
         sys.exit(1)
@@ -125,7 +125,7 @@ def main():
 
     try:
         result = transcribe(audio_path)
-        print(json.dumps(result, ensure_ascii=False))
+        print(json.dumps(result, ensure_ascii=True))
     except Exception as e:
         print(json.dumps({"error": str(e)}))
         sys.exit(1)

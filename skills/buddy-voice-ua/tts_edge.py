@@ -23,7 +23,7 @@ async def synthesize(text: str, output_path: str, voice: str = DEFAULT_VOICE) ->
     }
 
 
-def main():
+def main() -> None:
     if len(sys.argv) < 3:
         print(json.dumps({"error": "Usage: tts_edge.py <text> <output_path> [voice]"}))
         sys.exit(1)
@@ -34,7 +34,7 @@ def main():
 
     try:
         result = asyncio.run(synthesize(text, output_path, voice))
-        print(json.dumps(result, ensure_ascii=False))
+        print(json.dumps(result, ensure_ascii=True))
     except Exception as e:
         print(json.dumps({"error": str(e)}))
         sys.exit(1)

@@ -43,7 +43,7 @@ def fetch_exchange_rates() -> dict:
         raise Exception(f"Помилка парсингу JSON: {e}")
 
 
-def parse_rates(data: list) -> dict:
+def parse_rates(data: list[dict]) -> dict:
     """
     Парсить відповідь API та витягує курси USD та EUR
     
@@ -97,7 +97,7 @@ def format_response(rates: dict) -> str:
     return "\n".join(lines)
 
 
-def main():
+def main() -> None:
     """Головна функція: отримує курси та виводить результат"""
     try:
         # Отримуємо дані з API
@@ -121,7 +121,7 @@ def main():
                 "formatted": format_response(rates)
             }
         
-        print(json.dumps(result, ensure_ascii=False, indent=2))
+        print(json.dumps(result, ensure_ascii=True, indent=2))
         
     except Exception as e:
         error_result = {
@@ -129,7 +129,7 @@ def main():
             "error": str(e),
             "message": "Не вдалося отримати курси валют"
         }
-        print(json.dumps(error_result, ensure_ascii=False, indent=2))
+        print(json.dumps(error_result, ensure_ascii=True, indent=2))
 
 
 if __name__ == "__main__":

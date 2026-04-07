@@ -113,7 +113,7 @@ def check_git_status(path: Path) -> dict:
     except Exception as e:
         return {"is_git_repo": False, "error": str(e)}
 
-def main():
+def main() -> None:
     """Головна функція."""
     if len(sys.argv) < 2:
         print(json.dumps({
@@ -125,7 +125,7 @@ def main():
                 "git-status": "python dev-helper.py git-status <path>"
             },
             "types": ["nextjs", "python", "node"]
-        }, ensure_ascii=False))
+        }, ensure_ascii=True))
         return
     
     action = sys.argv[1].lower()
@@ -136,7 +136,7 @@ def main():
             print(json.dumps({
                 "error": f"Невідомий тип проєкту: {proj_type}",
                 "valid_types": ["nextjs", "python", "node"]
-            }, ensure_ascii=False))
+            }, ensure_ascii=True))
             return
         result = get_scaffold_structure(proj_type)
     elif action == "deps":
@@ -144,11 +144,11 @@ def main():
             print(json.dumps({
                 "error": "Необхідно вказати шлях до проєкту",
                 "usage": "python dev-helper.py deps <path>"
-            }, ensure_ascii=False))
+            }, ensure_ascii=True))
             return
         path = Path(sys.argv[2]).resolve()
         if not path.exists():
-            print(json.dumps({"error": f"Шлях не існує: {path}"}, ensure_ascii=False))
+            print(json.dumps({"error": f"Шлях не існує: {path}"}, ensure_ascii=True))
             return
         result = read_dependencies(path)
     elif action == "git-status":
@@ -156,17 +156,17 @@ def main():
             print(json.dumps({
                 "error": "Необхідно вказати шлях до репозиторію",
                 "usage": "python dev-helper.py git-status <path>"
-            }, ensure_ascii=False))
+            }, ensure_ascii=True))
             return
         path = Path(sys.argv[2]).resolve()
         if not path.exists():
-            print(json.dumps({"error": f"Шлях не існує: {path}"}, ensure_ascii=False))
+            print(json.dumps({"error": f"Шлях не існує: {path}"}, ensure_ascii=True))
             return
         result = check_git_status(path)
     else:
         result = {"error": f"Невідома дія: {action}"}
     
-    print(json.dumps(result, ensure_ascii=False))
+    print(json.dumps(result, ensure_ascii=True))
 
 if __name__ == "__main__":
     main()

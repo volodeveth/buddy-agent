@@ -53,7 +53,7 @@ def get_duration(input_path: str) -> float:
     return round(duration_sec, 1)
 
 
-def main():
+def main() -> None:
     if len(sys.argv) < 3:
         print(json.dumps({"error": "Usage: voice_utils.py <convert|duration> <file_path> [format]"}))
         sys.exit(1)

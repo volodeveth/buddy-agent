@@ -13,7 +13,7 @@ import re
 sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding="utf-8")
 SKILL_DIR = pathlib.Path(__file__).parent.resolve()
 
-def search_memory(query: str) -> list:
+def search_memory(query: str) -> list[dict]:
     """Шукає в файлах папки memory/"""
     results = []
     memory_dir = SKILL_DIR.parent / "memory"
@@ -32,7 +32,7 @@ def search_memory(query: str) -> list:
                     pass
     return results
 
-def search_files(query: str) -> list:
+def search_files(query: str) -> list[dict]:
     """Шукає файли в робочих директоріях"""
     results = []
     dirs = ["D:/BuddyWorkspace", "D:/Projects", "D:/Documents"]
@@ -48,7 +48,7 @@ def search_files(query: str) -> list:
                     })
     return results
 
-def search_web(query: str) -> list:
+def search_web(query: str) -> list[dict]:
     """Шукає в інтернеті через DuckDuckGo API"""
     try:
         url = f"https://api.duckduckgo.com/?q={urllib.parse.quote(query)}&format=json&no_html=1"
@@ -89,12 +89,12 @@ def search_auto(query: str) -> dict:
         results["results"].extend(search_web(query))
     return results
 
-def main():
+def main() -> None:
     query = sys.argv[1] if len(sys.argv) > 1 else ""
     search_type = sys.argv[2] if len(sys.argv) > 2 else "auto"
     
     if not query:
-        print(json.dumps({"error": "Вкажіть запит для пошуку"}, ensure_ascii=False))
+        print(json.dumps({"error": "Вкажіть запит для пошуку"}, ensure_ascii=True))
         return
     
     try:
@@ -108,9 +108,9 @@ def main():
             result = search_auto(query)
         else:
             result = {"error": f"Невідомий тип пошуку: {search_type}"}
-        print(json.dumps(result, ensure_ascii=False, indent=2))
+        print(json.dumps(result, ensure_ascii=True, indent=2))
     except Exception as e:
-        print(json.dumps({"error": str(e)}, ensure_ascii=False))
+        print(json.dumps({"error": str(e)}, ensure_ascii=True))
 
 if __name__ == "__main__":
     main()

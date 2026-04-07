@@ -28,7 +28,7 @@ def _load_registry() -> dict:
 def _save_registry(registry: dict) -> None:
     GENERATED_DIR.mkdir(parents=True, exist_ok=True)
     with open(REGISTRY_PATH, "w", encoding="utf-8") as f:
-        json.dump(registry, f, ensure_ascii=False, indent=2)
+        json.dump(registry, f, ensure_ascii=True, indent=2)
 
 
 def action_list() -> dict:
@@ -128,7 +128,7 @@ def action_reinstall(name: str) -> dict:
     }
 
 
-def main():
+def main() -> None:
     if len(sys.argv) < 2:
         print(json.dumps({
             "error": "Usage: skill_registry.py <list|uninstall|reinstall> [name]"
@@ -155,7 +155,7 @@ def main():
     else:
         result = {"error": f"Unknown command: {command}. Use: list, uninstall, reinstall"}
 
-    print(json.dumps(result, ensure_ascii=False))
+    print(json.dumps(result, ensure_ascii=True))
 
 
 if __name__ == "__main__":

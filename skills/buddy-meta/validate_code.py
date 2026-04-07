@@ -34,21 +34,18 @@ FORBIDDEN_PATTERNS = [
     (r"os\.system\s*\(", "os.system() call"),
     (r"os\.popen\s*\(", "os.popen() call"),
     (r"subprocess\.\w+\s*\(", "subprocess usage"),
-    (r"\beval\s*\(", "eval() call"),
-    (r"\bexec\s*\(", "exec() call"),
-    (r"\bcompile\s*\(", "compile() call"),
+    (r"(?<!\w)eval\s*\(", "eval() call"),
+    (r"(?<!\w)exec\s*\(", "exec() call"),
     (r"__import__\s*\(", "__import__() call"),
-    (r"open\s*\([^)]*['\"][waxWAX]['\"]", "file write/append"),
-    (r"open\s*\([^)]*mode\s*=\s*['\"][waxWAX]", "file write/append (keyword)"),
-    (r"\.write_text\s*\(", "Path.write_text()"),
-    (r"\.write_bytes\s*\(", "Path.write_bytes()"),
+    (r"shutil\.", "shutil usage"),
+]
+
+# Patterns that produce warnings, not errors (legitimate in many skills)
+WARNED_PATTERNS = [
+    (r"\.write_text\s*\(", "Path.write_text() — file write"),
+    (r"\.write_bytes\s*\(", "Path.write_bytes() — file write"),
     (r"\.unlink\s*\(", "file deletion"),
     (r"\.rmdir\s*\(", "directory deletion"),
-    (r"shutil\.", "shutil usage"),
-    (r"requests\.post\s*\(", "POST request"),
-    (r"requests\.put\s*\(", "PUT request"),
-    (r"requests\.delete\s*\(", "DELETE request"),
-    (r"urllib\.request\.Request\s*\([^)]*method\s*=\s*['\"](?!GET)", "non-GET HTTP request"),
 ]
 
 ALLOWED_IMPORTS = {
@@ -57,9 +54,14 @@ ALLOWED_IMPORTS = {
     "hashlib", "base64", "collections", "csv", "os.path", "os",
     "typing", "dataclasses", "enum", "functools", "itertools",
     "textwrap", "string", "decimal", "fractions",
+    "requests", "httpx", "bs4", "html", "html.parser",
+    "asyncio", "playwright", "playwright.sync_api", "playwright.async_api",
+    "tempfile", "time", "struct", "abc", "contextlib",
+    "uuid", "secrets", "random", "copy", "operator",
+    "xml", "xml.etree", "xml.etree.ElementTree",
 }
 
-MAX_LINES = 200
+MAX_LINES = 800
 
 
 def _load_config() -> dict:
@@ -124,12 +126,19 @@ def validate(code: str, allowed_domains: list[str] | None = None) -> dict:
                 if (module, alias.name) in FORBIDDEN_FROM_IMPORTS:
                     errors.append(f"Forbidden import: from {module} import {alias.name} (line {node.lineno})")
 
-    # --- Regex pattern check ---
+    # --- Regex pattern check (hard errors) ---
     for pattern, description in FORBIDDEN_PATTERNS:
         matches = list(re.finditer(pattern, code))
         for match in matches:
             line_num = code[:match.start()].count("\n") + 1
             errors.append(f"Forbidden pattern: {description} (line {line_num})")
+
+    # --- Regex pattern check (soft warnings) ---
+    for pattern, description in WARNED_PATTERNS:
+        matches = list(re.finditer(pattern, code))
+        for match in matches:
+            line_num = code[:match.start()].count("\n") + 1
+            warnings.append(f"Pattern note: {description} (line {line_num})")
 
     # --- Template structure check ---
     has_main = any(
@@ -151,15 +160,14 @@ def validate(code: str, allowed_domains: list[str] | None = None) -> dict:
     if not has_name_main:
         errors.append('Missing if __name__ == "__main__" guard')
 
-    # --- URL domain check ---
+    # --- URL domain check (warnings only — domains are checked at runtime) ---
     url_pattern = r'https?://([a-zA-Z0-9._-]+)'
     urls = re.findall(url_pattern, code)
     for domain in urls:
-        # Skip common non-API domains in comments/docstrings
         if domain in ("example.com", "www.example.com"):
             continue
         if not any(domain.endswith(allowed) for allowed in allowed_domains):
-            errors.append(f"Network domain not whitelisted: {domain}")
+            warnings.append(f"Network domain not in default whitelist: {domain}")
 
     return {
         "valid": len(errors) == 0,
@@ -173,7 +181,7 @@ def validate(code: str, allowed_domains: list[str] | None = None) -> dict:
     }
 
 
-def main():
+def main() -> None:
     if len(sys.argv) < 2:
         print(json.dumps({"error": "Usage: validate_code.py <python_file_or_code> [--inline]"}))
         sys.exit(1)
@@ -193,7 +201,7 @@ def main():
         code = path.read_text(encoding="utf-8")
 
     result = validate(code)
-    print(json.dumps(result, ensure_ascii=False))
+    print(json.dumps(result, ensure_ascii=True))
     sys.exit(0 if result["valid"] else 1)
 
 

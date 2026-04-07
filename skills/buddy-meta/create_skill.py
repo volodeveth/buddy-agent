@@ -546,7 +546,7 @@ def _parse_args() -> dict:
     return result
 
 
-def main():
+def main() -> None:
     parsed = _parse_args()
     action = parsed["action"]
     need = parsed["need"]
