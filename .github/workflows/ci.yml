@@ -1,0 +1,40 @@
+name: CI
+
+on:
+  push:
+    branches: [master, develop, "feature/*", "fix/*"]
+  pull_request:
+    branches: [master]
+
+jobs:
+  test:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install dependencies
+        run: pip install -r requirements-dev.txt
+
+      - name: Syntax check all Python files
+        run: |
+          Get-ChildItem -Path skills -Recurse -Filter *.py | ForEach-Object {
+            python -m py_compile $_.FullName
+            if ($LASTEXITCODE -ne 0) { exit 1 }
+          }
+        shell: pwsh
+
+      - name: Run tests
+        run: python -m pytest tests/ -v --cov=skills --cov-report=term-missing
+
+      - name: Check for secrets in tracked files
+        run: |
+          $found = git grep -l "sk-or-v1-" -- ":(exclude).env*" ":(exclude).gitignore" 2>$null
+          if ($found) {
+            Write-Error "Possible API key found in tracked files: $found"
+            exit 1
+          }
+        shell: pwsh
