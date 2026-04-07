@@ -25,29 +25,16 @@ OPENROUTER_URL = "https://openrouter.ai/api/v1/chat/completions"
 
 # --- Load config ---
 
-_ENV_CANDIDATES = [
-    PROJECT_ROOT / ".env",
-    Path("D:/Myapps/buddy agent/.env"),
-    Path.home() / ".openclaw" / "workspace" / ".env",
-]
-
 
 def _load_env() -> None:
     """Load .env file if OPENROUTER_API_KEY not set."""
-    if os.environ.get("OPENROUTER_API_KEY"):
-        return
-    for env_path in _ENV_CANDIDATES:
-        if env_path.exists():
-            with open(env_path, encoding="utf-8") as f:
-                for line in f:
-                    line = line.strip()
-                    if line and not line.startswith("#") and "=" in line:
-                        key, _, val = line.partition("=")
-                        key = key.strip()
-                        val = val.strip().strip('"').strip("'")
-                        if key and val:
-                            os.environ.setdefault(key, val)
-            break
+    _loader_path = SKILL_DIR.parent / "buddy-utils" / "env_loader.py"
+    if _loader_path.exists():
+        import importlib.util as _ilu
+        _spec = _ilu.spec_from_file_location("env_loader", _loader_path)
+        _mod = _ilu.module_from_spec(_spec)
+        _spec.loader.exec_module(_mod)
+        _mod.load_env()
 
 
 def _load_meta_config() -> dict:

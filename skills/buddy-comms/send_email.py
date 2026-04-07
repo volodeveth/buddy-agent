@@ -14,29 +14,17 @@ from pathlib import Path
 
 sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding="utf-8")
 
-# Load .env if SMTP vars not already in environment
 SKILL_DIR = Path(__file__).parent.resolve()
 PROJECT_ROOT = SKILL_DIR.parent.parent
 
-_ENV_CANDIDATES = [
-    PROJECT_ROOT / ".env",                          # OpenClaw workspace root
-    Path("D:/Myapps/buddy agent/.env"),             # Dev repo
-    Path.home() / ".openclaw" / "workspace" / ".env",
-]
-
-if not os.environ.get("SMTP_USER"):
-    for _env_path in _ENV_CANDIDATES:
-        if _env_path.exists():
-            with open(_env_path, encoding="utf-8") as _f:
-                for _line in _f:
-                    _line = _line.strip()
-                    if _line and not _line.startswith("#") and "=" in _line:
-                        _key, _, _val = _line.partition("=")
-                        _key = _key.strip()
-                        _val = _val.strip().strip('"').strip("'")
-                        if _key and _val:
-                            os.environ.setdefault(_key, _val)
-            break
+# Load environment
+import importlib.util as _ilu
+_loader_path = Path(__file__).parent.parent / "buddy-utils" / "env_loader.py"
+if _loader_path.exists():
+    _spec = _ilu.spec_from_file_location("env_loader", _loader_path)
+    _mod = _ilu.module_from_spec(_spec)
+    _spec.loader.exec_module(_mod)
+    _mod.load_env()
 
 
 def send_via_smtp(to: str, subject: str, body: str,
