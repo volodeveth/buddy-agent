@@ -10,13 +10,27 @@ echo "Repo:      $REPO"
 echo "Workspace: $WORKSPACE"
 echo ""
 
-# Skills (full recursive copy)
+# Skills (sync code files, preserve generated/ in buddy-meta)
 echo "[1/4] Syncing skills..."
 for skill_dir in "$REPO"/skills/buddy-*/; do
     skill_name=$(basename "$skill_dir")
     mkdir -p "$WORKSPACE/skills/$skill_name"
-    cp -r "$skill_dir"* "$WORKSPACE/skills/$skill_name/" 2>/dev/null
-    echo "  ✓ $skill_name"
+
+    if [ "$skill_name" = "buddy-meta" ]; then
+        # For buddy-meta: sync top-level files + templates/ but NOT generated/
+        for f in "$skill_dir"/*.py "$skill_dir"/*.md "$skill_dir"/*.txt "$skill_dir"/*.json; do
+            [ -f "$f" ] && cp "$f" "$WORKSPACE/skills/$skill_name/" 2>/dev/null
+        done
+        # Sync templates/ subdirectory
+        if [ -d "$skill_dir/templates" ]; then
+            mkdir -p "$WORKSPACE/skills/$skill_name/templates"
+            cp -r "$skill_dir/templates/"* "$WORKSPACE/skills/$skill_name/templates/" 2>/dev/null
+        fi
+        echo "  ✓ $skill_name (preserved generated/)"
+    else
+        cp -r "$skill_dir"* "$WORKSPACE/skills/$skill_name/" 2>/dev/null
+        echo "  ✓ $skill_name"
+    fi
 done
 
 # Templates → workspace root (OpenClaw reads them from root)
@@ -57,7 +71,10 @@ for script in \
     "skills/buddy-security/audit_log.py" \
     "skills/buddy-files/file_validator.py" \
     "skills/buddy-scheduler/scheduler.py" \
-    "skills/buddy-voice-ua/stt_whisper.py"; do
+    "skills/buddy-voice-ua/stt_whisper.py" \
+    "skills/buddy-search/search.py" \
+    "skills/buddy-dev/dev.py" \
+    "skills/buddy-utils/env_loader.py"; do
     if [ -f "$WORKSPACE/$script" ]; then
         python -c "import py_compile; py_compile.compile('$WORKSPACE/$script', doraise=True)" 2>/dev/null
         if [ $? -eq 0 ]; then
