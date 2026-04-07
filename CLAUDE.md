@@ -37,6 +37,7 @@ Custom Skills (we build):
   buddy-dev         — Git workflow, deploy (Vercel/Railway)
   buddy-scheduler   — Reminders, cron tasks
   buddy-search      — Search router (web/memory/files)
+  buddy-utils       — Shared utilities (env_loader)
   buddy-business    — [FUTURE] Orders, Google Sheets
 ```
 
@@ -67,11 +68,11 @@ Custom Skills (we build):
 
 ## Implementation Phases
 
-1. **Buddy Alive** (1-2d): OpenClaw + Telegram + DeepSeek + identity templates
-2. **Remembers & Hears** (2-3d): Voice UA + memory system
-3. **Acts Safely** (2-3d): Full security + files + email + reminders
-4. **Codes & Deploys** (2-3d): Git + Vercel/Railway
-5. **On Server** (1-2d): Railway 24/7 deployment
+1. **Buddy Alive** ✅ — OpenClaw + Telegram + DeepSeek + identity templates
+2. **Remembers & Hears** ✅ — Voice UA + memory system
+3. **Acts Safely** ✅ — Full security + files + email + reminders
+4. **Codes & Deploys** 🔄 — Git + buddy-meta self-extending agent
+5. **On Server** ⏳ — Railway 24/7 deployment
 6. **Future:** Business orders, Viber, voice calls
 
 ## Code Standards
