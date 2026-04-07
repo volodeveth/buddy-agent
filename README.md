@@ -1,11 +1,11 @@
 # Buddy Agent
 
-A self-extending personal AI assistant built on the [OpenClaw](https://github.com/openclaw) framework. Communicates via Telegram (text + voice in Ukrainian). Uses **DeepSeek V3.2** via OpenRouter as its LLM brain — for both conversation dispatch and autonomous skill generation.
+A self-extending personal AI assistant built on the [OpenClaw](https://github.com/openclaw) framework. Communicates via Telegram (text + voice in Ukrainian). Features a dual-LLM architecture where **DeepSeek V3.2** dispatches tasks and **MiniMax M2.7** autonomously generates new capabilities.
 
 ## Key Features
 
 - **Voice interface** — STT via faster-whisper, TTS via edge-tts (Microsoft). Defaults to Ukrainian, configurable to any language supported by Whisper
-- **Self-extending** — the agent creates, tests, and fixes its own skills using DeepSeek V3.2
+- **Self-extending** — the agent creates, tests, and fixes its own skills using MiniMax M2.7
 - **3-tier security** — SAFE / MEDIUM / CRITICAL actions with PIN gate and audit logging
 - **Modular skill system** — each capability is an independent skill with its own SKILL.md and Python scripts
 - **Persistent memory** — remembers conversations, people, preferences across sessions
@@ -14,7 +14,7 @@ A self-extending personal AI assistant built on the [OpenClaw](https://github.co
 ## Architecture
 
 ```
-User (Telegram) ──> OpenClaw Gateway ──> DeepSeek V3.2 (via OpenRouter)
+User (Telegram) ──> OpenClaw Gateway ──> DeepSeek V3.2 (Dispatcher)
                                               │
                          ┌────────────────────┴────────────────────┐
                          │                                         │
@@ -22,7 +22,7 @@ User (Telegram) ──> OpenClaw Gateway ──> DeepSeek V3.2 (via OpenRouter)
                   (exec Python scripts)                          │
                                                           create_skill.py
                                                                  │
-                                                          DeepSeek V3.2
+                                                          MiniMax M2.7
                                                           (via OpenRouter)
                                                                  │
                                                           validate_code.py
@@ -32,11 +32,12 @@ User (Telegram) ──> OpenClaw Gateway ──> DeepSeek V3.2 (via OpenRouter)
                                                           Execute immediately
 ```
 
-### LLM
+### Dual LLM Roles
 
-| Model | Provider | Role |
-|-------|----------|------|
-| **DeepSeek V3.2** | OpenRouter | All tasks: conversation, intent classification, tool dispatch, and code generation for new skills |
+| Model | Role | Responsibility |
+|-------|------|----------------|
+| **DeepSeek V3.2** | Dispatcher | Handles 95% of work: chat, classify intents, call existing tools. Only describes WHAT is needed for new skills. |
+| **MiniMax M2.7** | Engineer | Designs architecture, writes code, self-reviews. Called via OpenRouter API when new capabilities are needed. |
 
 ## Skills
 

@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """Main orchestrator for self-extending agent.
-Receives a need and delegates to DeepSeek V3.2 via OpenRouter,
+Receives a need from DeepSeek V3.2, delegates code generation to MiniMax M2.7,
 validates, saves, and registers new skills."""
 
 import sys

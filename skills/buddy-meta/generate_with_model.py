@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
-"""Call DeepSeek V3.2 (or fallback) via OpenRouter for skill engineering.
-DeepSeek V3.2 receives: need description + template + constraints.
-DeepSeek V3.2 returns: complete skill (name, SKILL.md, Python code) as JSON."""
+"""Call MiniMax M2.7 (or DeepSeek V3.2 fallback) via OpenRouter for skill engineering.
+MiniMax receives: need description + template + constraints.
+MiniMax returns: complete skill (name, SKILL.md, Python code) as JSON."""
 
 import sys
 import io
@@ -225,8 +225,8 @@ def generate_skill(need: str, context: str = "",
     _load_env()
     config = _load_meta_config()
 
-    model = config.get("heavy_model", "deepseek/deepseek-chat-v3.2")
-    fallback = config.get("fallback_model", "deepseek/deepseek-chat")
+    model = config.get("heavy_model", "minimax/minimax-m2.7")
+    fallback = config.get("fallback_model", "deepseek/deepseek-chat-v3.2")
     allowed_domains = config.get("allowed_network_domains", [
         "api.privatbank.ua", "api.openweathermap.org",
         "api.duckduckgo.com", "api.github.com", "wttr.in",
