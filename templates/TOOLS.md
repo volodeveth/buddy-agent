@@ -23,3 +23,5 @@
 - send_as_owner: send messages impersonating the owner
 - config_modify: change security or OpenClaw config
 - whitelist_modify: add/remove directories from whitelist
+- create_skill: create a new skill via buddy-meta. Ask user for PIN first (chat confirmation), then write request.json, then call exec with plain `python ...create_skill.py` (NO elevated flag, NO security parameter). See IDENTITY.md for full steps.
+- update_skill: update an existing generated skill. Same flow as create_skill — PIN in chat, then write request.json, then plain exec. See IDENTITY.md.

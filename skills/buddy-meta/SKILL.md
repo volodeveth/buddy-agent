@@ -20,15 +20,26 @@ If the user asks you to do something and NO existing skill can handle it:
 
 ## Workflow
 
-### Creating a New Skill
+### Creating a New Skill (THREE-STEP PROCESS)
 
-```bash
-python create_skill.py --action create \
-  --need "WHAT user needs (plain language description)" \
-  --context "original user message"
+**Step 1:** Write request file using `file_write` tool:
+Path: `C:/Users/User/.openclaw/workspace/skills/buddy-meta/request.json`
+Content:
+```json
+{"action": "create", "need": "DESCRIBE WHAT IS NEEDED IN ENGLISH", "context": "original user message"}
 ```
+Write "need" in ENGLISH — it goes to the code generator. Be technical and specific.
 
-**IMPORTANT:** You (Gemini Flash) do NOT write code. You ONLY describe what is needed in `--need`. MiniMax M2.7 handles ALL engineering: plans architecture, writes code, self-reviews.
+**Step 2:** Run the script via exec with NO arguments (IGNORE stdout):
+```bash
+python C:/Users/User/.openclaw/workspace/skills/buddy-meta/create_skill.py
+```
+The script reads request.json automatically and deletes it after reading.
+
+**Step 3:** Read result using `file_read` tool (NOT exec, NOT cat):
+Path: `C:/Users/User/.openclaw/workspace/skills/buddy-meta/last_result.json`
+
+**IMPORTANT:** You do NOT write code. You ONLY describe what is needed. MiniMax M2.7 handles ALL engineering.
 
 The script will:
 1. Send the need to MiniMax M2.7 via OpenRouter API
@@ -36,31 +47,35 @@ The script will:
 3. validate_code.py checks the generated code (AST analysis, forbidden patterns)
 4. If invalid — MiniMax gets errors and retries (up to 3 attempts)
 5. If valid — saves to `generated/<skill_name>/`, registers in skill_registry.json
+6. Writes result to `last_result.json`
 
-**Response includes `inline_exec` path** — execute it immediately:
+**If result JSON has `"status": "created"`, use `inline_exec` path to run immediately:**
 ```bash
 python <inline_exec_path> <args>
 ```
+NOTE: Generated skills live in `skills/buddy-meta/generated/<name>/`, NOT in `skills/<name>/`.
 
-Tell user: "Навик створено. Працює зараз через пряме виконання. Для повної інтеграції почніть нову сесію."
+Tell user: "Навик створено. Працює зараз через пряме виконання."
+
+**NEVER say "JSON is broken" — always read last_result.json with file_read tool instead.**
 
 ### Reading and Updating Skills
 
-```bash
-# Read source code of a generated skill
-python create_skill.py --action read --name "buddy-skill-name"
+Write request.json, then run create_skill.py with no args, then read last_result.json:
 
-# Fix/update a generated skill (sends current code + fix description to MiniMax)
-python create_skill.py --action update --name "buddy-skill-name" \
-  --need "Description of what to fix or change"
+```json
+{"action": "read", "name": "buddy-skill-name"}
+```
+```json
+{"action": "update", "name": "buddy-skill-name", "need": "Description of what to fix in English"}
+```
+```json
+{"action": "list"}
 ```
 
 ### Managing Generated Skills
 
 ```bash
-# List all generated skills
-python skill_registry.py list
-
 # Uninstall a skill (moves to _uninstalled/, MEDIUM security)
 python skill_registry.py uninstall "buddy-skill-name"
 
@@ -77,5 +92,5 @@ python skill_registry.py reinstall "buddy-skill-name"
 - ALWAYS require PIN for skill creation
 - ALWAYS show the user what the skill does before requesting PIN
 - Maximum 20 active generated skills
-- Maximum 200 lines per generated script
-- Generated skills can ONLY use whitelisted imports and network domains
+- Maximum 800 lines per generated script
+- Generated skills can ONLY use whitelisted imports (network domains are warnings only)
