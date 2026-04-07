@@ -61,6 +61,7 @@ skills/buddy-meta/generated/*/data/
 # Test/debug files
 *.txt
 !requirements.txt
+!requirements-dev.txt
 linkedin-posts.txt
 fix_*.py
 test_fix_*.py
