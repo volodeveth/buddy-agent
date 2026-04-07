@@ -1,5 +1,7 @@
 # Buddy Agent v2 — Updated Design & Implementation Plan
 
+> **UPDATE 2026-04-06:** LLM architecture simplified — switched from dual-LLM (Gemini Flash + MiniMax M2.7) to single **DeepSeek V3.2** via OpenRouter for all tasks. max_script_lines confirmed at 800.
+
 **Date:** 2026-03-29 | **Status:** Draft | **Supersedes:** Phases 4+ of original spec
 
 ---

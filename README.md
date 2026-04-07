@@ -1,11 +1,11 @@
 # Buddy Agent
 
-A self-extending personal AI assistant built on the [OpenClaw](https://github.com/openclaw) framework. Communicates via Telegram (text + voice in Ukrainian). Features a dual-LLM architecture where **Gemini 2.0 Flash** dispatches tasks and **MiniMax M2.7** autonomously generates new capabilities.
+A self-extending personal AI assistant built on the [OpenClaw](https://github.com/openclaw) framework. Communicates via Telegram (text + voice in Ukrainian). Uses **DeepSeek V3.2** via OpenRouter as its LLM brain — for both conversation dispatch and autonomous skill generation.
 
 ## Key Features
 
 - **Voice interface** — STT via faster-whisper, TTS via edge-tts (Microsoft). Defaults to Ukrainian, configurable to any language supported by Whisper
-- **Self-extending** — the agent creates, tests, and fixes its own skills using MiniMax M2.7
+- **Self-extending** — the agent creates, tests, and fixes its own skills using DeepSeek V3.2
 - **3-tier security** — SAFE / MEDIUM / CRITICAL actions with PIN gate and audit logging
 - **Modular skill system** — each capability is an independent skill with its own SKILL.md and Python scripts
 - **Persistent memory** — remembers conversations, people, preferences across sessions
@@ -14,7 +14,7 @@ A self-extending personal AI assistant built on the [OpenClaw](https://github.co
 ## Architecture
 
 ```
-User (Telegram) ──> OpenClaw Gateway ──> Gemini 2.0 Flash (Dispatcher)
+User (Telegram) ──> OpenClaw Gateway ──> DeepSeek V3.2 (via OpenRouter)
                                               │
                          ┌────────────────────┴────────────────────┐
                          │                                         │
@@ -22,7 +22,7 @@ User (Telegram) ──> OpenClaw Gateway ──> Gemini 2.0 Flash (Dispatcher)
                   (exec Python scripts)                          │
                                                           create_skill.py
                                                                  │
-                                                          MiniMax M2.7
+                                                          DeepSeek V3.2
                                                           (via OpenRouter)
                                                                  │
                                                           validate_code.py
@@ -32,12 +32,11 @@ User (Telegram) ──> OpenClaw Gateway ──> Gemini 2.0 Flash (Dispatcher)
                                                           Execute immediately
 ```
 
-### Dual LLM Roles
+### LLM
 
-| Model | Role | Responsibility |
-|-------|------|----------------|
-| **Gemini 2.0 Flash** | Dispatcher | Handles 95% of work: chat, classify intents, call existing tools. Only describes WHAT is needed for new skills. |
-| **MiniMax M2.7** | Engineer | Designs architecture, writes code, self-reviews. Called via OpenRouter API when new capabilities are needed. |
+| Model | Provider | Role |
+|-------|----------|------|
+| **DeepSeek V3.2** | OpenRouter | All tasks: conversation, intent classification, tool dispatch, and code generation for new skills |
 
 ## Skills
 
@@ -62,9 +61,9 @@ Currently generated:
 
 | Skill | Description | Model |
 |-------|-------------|-------|
-| buddy-exchange-rates | UAH/USD/EUR exchange rates from PrivatBank API | MiniMax M2.7 |
-| buddy-find | Smart search router: memory, local files, web (DuckDuckGo) | MiniMax M2.7 |
-| buddy-dev-helper | Dev tools: project scaffolding, dependency listing, git status | MiniMax M2.7 |
+| buddy-exchange-rates | UAH/USD/EUR exchange rates from PrivatBank API | DeepSeek V3.2 |
+| buddy-find | Smart search router: memory, local files, web (DuckDuckGo) | DeepSeek V3.2 |
+| buddy-dev-helper | Dev tools: project scaffolding, dependency listing, git status | DeepSeek V3.2 |
 
 ## Security Model
 
@@ -100,12 +99,12 @@ The agent can autonomously create new skills when it encounters a request beyond
 
 ### How It Works
 
-1. Gemini Flash detects a need for a new capability
-2. Gemini describes the need in natural language (does NOT write code)
-3. `create_skill.py` sends the need to MiniMax M2.7 via OpenRouter
-4. MiniMax generates: skill name, description, SKILL.md, complete Python script
+1. DeepSeek V3.2 detects a need for a new capability
+2. The model describes the need in natural language (does NOT write code)
+3. `create_skill.py` sends the need to DeepSeek V3.2 via OpenRouter
+4. DeepSeek V3.2 generates: skill name, description, SKILL.md, complete Python script
 5. `validate_code.py` performs AST-based safety analysis
-6. If invalid: errors sent back to MiniMax for self-correction (up to 3 attempts)
+6. If invalid: errors sent back to DeepSeek V3.2 for self-correction (up to 3 attempts)
 7. If valid: saved to `generated/`, registered in `skill_registry.json`
 8. Script executed immediately via inline exec
 9. Full skill integration on next session restart
@@ -161,7 +160,7 @@ buddy-agent/
 │   ├── buddy-search/          # Search routing (stub)
 │   └── buddy-meta/            # Self-extending engine
 │       ├── create_skill.py    # Orchestrator: create/read/update/list
-│       ├── generate_with_model.py  # MiniMax M2.7 via OpenRouter
+│       ├── generate_with_model.py  # DeepSeek V3.2 via OpenRouter
 │       ├── validate_code.py   # AST safety analysis
 │       ├── skill_registry.py  # Uninstall/reinstall management
 │       ├── templates/         # System prompt, skill/script templates
@@ -180,7 +179,7 @@ buddy-agent/
 - Python 3.12+
 - [OpenClaw](https://github.com/openclaw) framework installed
 - Telegram Bot Token
-- OpenRouter API key (for MiniMax M2.7)
+- OpenRouter API key (for DeepSeek V3.2)
 - Gmail App Password (for email)
 
 ### Environment Variables
@@ -235,8 +234,7 @@ bash sync.sh
 | Component | Technology | Cost |
 |-----------|-----------|------|
 | Framework | OpenClaw (TypeScript) | Free |
-| Dispatcher LLM | Gemini 2.0 Flash | ~$0.10/1M tokens |
-| Engineer LLM | MiniMax M2.7 (via OpenRouter) | ~$0.15/1M tokens |
+| LLM | DeepSeek V3.2 (via OpenRouter) | ~$0.14/1M tokens |
 | Telegram Gateway | Telegram Bot API | Free |
 | STT | faster-whisper (local) | Free |
 | TTS | edge-tts (Microsoft) | Free |

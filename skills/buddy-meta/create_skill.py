@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """Main orchestrator for self-extending agent.
-Receives a need from Gemini Flash, delegates to MiniMax M2.7,
+Receives a need and delegates to DeepSeek V3.2 via OpenRouter,
 validates, saves, and registers new skills."""
 
 import sys
